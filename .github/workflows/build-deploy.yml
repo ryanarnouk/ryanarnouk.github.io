@@ -19,7 +19,7 @@ jobs:
 
       - name: Set up Rust
         working-directory: ./ssg
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
       - name: Install Node.js
         uses: actions/setup-node@v4
