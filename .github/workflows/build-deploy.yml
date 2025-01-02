@@ -1,0 +1,36 @@
+name: Build and Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  RUST_LOG: DEBUG
+  CONFIG_PATH: ${{ github.workspace }}/config.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23
+
+      - name: Install Tailwind
+        run: |
+          npm install -g tailwindcss
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Run the binary
+        run: ./ssg/target/release/ssg
