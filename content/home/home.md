@@ -24,6 +24,7 @@ More on my GitHub!
 
 ## Recent Blog Posts
 - ...stub...
+- Test rebuild
 
 ![Example alt text](images/testimage.png)
 
