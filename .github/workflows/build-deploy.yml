@@ -29,6 +29,15 @@ jobs:
         run: |
           npm install -g tailwindcss
 
+      - name: Restore build from cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ./build
+          key: build-cache-${{ runner.os }}-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
+          restore-keys: |
+            build-cache-${{ runner.os }}-
+
       - name: Build
         working-directory: ./ssg
         run: cargo build --release
@@ -36,17 +45,15 @@ jobs:
       - name: Run the binary
         run: ./ssg/target/release/ssg
 
-      - name: Cache build folder
+      - name: Save updated build folder to cache
+        if: always() # Always save, even if the cache was restored
         uses: actions/cache@v4
-        with: 
+        with:
           path: ./build
           key: build-cache-${{ runner.os }}-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
-          restore-keys: |
-            build-cache-${{ runner.os }}-
-          
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
-        with: 
+        with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
-
