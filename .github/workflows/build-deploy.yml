@@ -35,3 +35,18 @@ jobs:
 
       - name: Run the binary
         run: ./ssg/target/release/ssg
+
+      - name: Cache build folder
+        uses: actions/cache@v4
+        with: 
+          path: ./build
+          key: build-cache-${{ runner.os }}-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
+          restore-keys: |
+            build-cache-${{ runner.os }}-
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with: 
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+
