@@ -1,0 +1,13 @@
+metadata:
+  base_url: "https://ryanarnouk.github.io"
+  title: "Ryan Arnouk"
+  author: "Ryan Arnouk"
+  description: "Ryan Arnouk's personal website"
+paths:
+  content_dir: "./content/"
+  template_dir: "./templates/"
+  output_dir: "./build/"
+  static_dir: "./static/"
+build:
+  minify_html: true
+  generate_sitemap: false

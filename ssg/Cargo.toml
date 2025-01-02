@@ -6,3 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+blake3 = "1.5.5"
+env_logger = "0.11.6"
+gray_matter = "0.2.8"
+image = "0.24"
+log = "0.4.22"
+minify-html = "0.15.0"
+pulldown-cmark = "0.12"
+serde = "1.0.216"
+serde_json = "1.0.134"
+serde_yaml = "0.9.34"
+tera = "1.20"
+walkdir = "2.4"
