@@ -63,7 +63,7 @@ jobs:
             ~/ssg/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-registry-${{ runner.os }}-
+            ${{ runner.os }}-cargo-
 
       - name: Build
         working-directory: ./ssg
