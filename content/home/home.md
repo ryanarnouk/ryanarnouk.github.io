@@ -19,6 +19,7 @@ You can learn more about my experience in depth on my LinkedIn!
 - Runtime VM
 - Breathe App
 - Discover Machine Learning
+- Personal Website
 
 More on my GitHub!
 
