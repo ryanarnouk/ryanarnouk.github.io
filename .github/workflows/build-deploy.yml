@@ -83,7 +83,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./ssg/target/
-          key: cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-build-${{ runner.os }}-
 
