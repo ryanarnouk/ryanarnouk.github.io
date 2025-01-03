@@ -61,7 +61,7 @@ jobs:
             ~/ssg/.cargo/registry/cache/
             ~/ssg/.cargo/git/db/
             ~/ssg/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -83,9 +83,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./ssg/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
           restore-keys: |
-            cargo-build-${{ runner.os }}-
+            ${{ runner.os }}-cargo-
 
       - name: Setup GitHub pages
         uses: actions/configure-pages@v5
