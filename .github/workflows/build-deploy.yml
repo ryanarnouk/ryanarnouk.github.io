@@ -61,7 +61,7 @@ jobs:
             ~/ssg/.cargo/registry/cache/
             ~/ssg/.cargo/git/db/
             ~/ssg/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
