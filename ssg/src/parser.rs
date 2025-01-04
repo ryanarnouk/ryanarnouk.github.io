@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use pulldown_cmark::{html, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use std::fmt::Write;
 
 fn replace_file_extension(file_path: &str, new_extension: &str) -> String {
     if let Some(dot_index) = file_path.rfind('.') {
@@ -25,11 +25,11 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
         match event {
             // Customize headers
             Event::Start(Tag::Heading {
-                             level,
-                             id: _,
-                             classes: _,
-                             attrs: _,
-                         }) => {
+                level,
+                id: _,
+                classes: _,
+                attrs: _,
+            }) => {
                 if is_inside_header {
                     panic!("Nested headers are not allowed");
                 }
@@ -59,11 +59,11 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
 
             // Image (use partial template to render)
             Event::Start(Tag::Image {
-                             link_type: _,
-                             dest_url,
-                             title,
-                             id: _,
-                         }) => {
+                link_type: _,
+                dest_url,
+                title,
+                id: _,
+            }) => {
                 is_inside_image = true;
                 image_alt_text.clear();
                 // TODO: FIX ALT TEXT ISSUES NOT APPEARING IN IMG TAG
@@ -82,7 +82,7 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                     context.insert("alt", title.to_string());
                     context
                 })
-                    .unwrap();
+                .unwrap();
 
                 // Render image using the partial template that was previously defined
                 html_output.push_str(
@@ -94,6 +94,22 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
 
             Event::End(TagEnd::Image) => {
                 // No additional actions
+            }
+
+            Event::Start(Tag::Link {
+                link_type: _,
+                dest_url,
+                title,
+                id: _,
+            }) => {
+                html_output.push_str(&format!(
+                    "<a class=\"text-base font-bold leading-relaxed text-green-700\" href=\"{}\" title=\"{}\">",
+                    dest_url.to_string(), title.to_string(),
+                ));
+            }
+            
+            Event::End(TagEnd::Link) => {
+                html_output.push_str("</a>");
             }
 
             // Customize paragraphs

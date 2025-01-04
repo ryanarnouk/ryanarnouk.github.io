@@ -18,11 +18,14 @@ mod parser;
 mod path;
 mod resources;
 
+// Match raw frontmatter input directly before being further parsed
+// into more appropriate page type (separate frontmatter and metadata)
 #[derive(Debug, Deserialize)]
 struct Frontmatter {
-    title: String,
-    date: String,
-    tags: Vec<String>,
+    title: Option<String>,
+    date: Option<String>,
+    tags: Option<Vec<String>>,
+    description: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,23 +55,38 @@ struct Paths {
 struct Build {
     minify_html: bool,
     generate_sitemap: bool,
+    cache: bool,
 }
 
-// metadata for a page
+// metadata for a page/post
+#[derive(Debug, Serialize)]
+enum PageType {
+    Index,
+    Page, // regular information page
+    Post,
+}
+
+// NOTE: Treat a page and a post the exact same (just that a post an optional will have a date/tag as well)
+// A page one of multiple types, represented as one of:
+// - Post
+// - Information (index, about, etc.)
 #[derive(Debug, Serialize)]
 struct Page {
-    title: String,
-    url: String,
-    description: String,
+    page_type: PageType,
+    title: Option<String>,
+    url: Option<String>,
+    description: Option<String>,
+    tags: Option<Vec<String>>,
+    date: Option<String>,
 }
 
-// metadata for a blog post
-#[derive(Debug, Serialize)]
-struct Post {
-    title: String,
-    url: String,
-    description: String,
-}
+// // metadata for a blog post
+// #[derive(Debug, Serialize)]
+// struct Post {
+//     title: String,
+//     url: String,
+//     description: String,
+// }
 
 // Reading YAML configuration files
 fn load_yaml_config(file_path: &PathBuf) -> Result<Config, Box<dyn std::error::Error>> {
@@ -129,6 +147,19 @@ fn get_template_name(path_to_file: &Path) -> &OsStr {
     folder_name
 }
 
+fn extract_page_info(frontmatter: Frontmatter) -> Page {
+    let page = Page {
+        page_type: PageType::Page, // TODO: add post type based on directory name. temp stub
+        title: frontmatter.title,
+        url: Some(String::from("test url")),
+        description: frontmatter.description,
+        tags: frontmatter.tags,
+        date: frontmatter.date,
+    };
+
+    page
+}
+
 fn main() -> std::io::Result<()> {
     env_logger::init();
 
@@ -179,15 +210,22 @@ fn main() -> std::io::Result<()> {
             let path_buf = path.to_path_buf();
 
             // Check if unmodified based on hash & modify metadata in cache
-            if cache::has_file_changed(&path_buf, &cache)? {
-                info!("Rebuilding: {:?}", path);
-                // update the cache
-                cache
-                    .file_data
-                    .insert(path_buf.clone(), compute_file_metadata(&path_buf)?);
+            if config.build.cache {
+                if cache::has_file_changed(&path_buf, &cache)? {
+                    info!("Rebuilding: {:?}", path);
+                    // update the cache
+                    cache
+                        .file_data
+                        .insert(path_buf.clone(), compute_file_metadata(&path_buf)?);
+                } else {
+                    info!("Skipping unchanged file: {:?}", path_buf);
+                    continue;
+                }
             } else {
-                info!("Skipping unchanged file: {:?}", path_buf);
-                continue;
+                info!(
+                    "File {:?} not cached. Cache on this build is disabled (check config.yml file)",
+                    path_buf
+                );
             }
 
             // Read markdown file
@@ -197,10 +235,12 @@ fn main() -> std::io::Result<()> {
             let matter = Matter::<YAML>::new();
             let parsed_frontmatter = matter.parse(&markdown);
 
-            if let Some(front) = parsed_frontmatter.data {
+            let page = if let Some(front) = parsed_frontmatter.data {
                 let frontmatter: Frontmatter = front.deserialize().unwrap();
-                debug!("File frontmatter: {:?}", frontmatter);
-            }
+                Some(extract_page_info(frontmatter))
+            } else {
+                None
+            };
 
             let content = parsed_frontmatter.content;
 
@@ -210,42 +250,46 @@ fn main() -> std::io::Result<()> {
 
             // Render with template
             let mut context = Context::new();
-            context.insert("title", path.file_stem().unwrap().to_str().unwrap());
+            if let Some(page) = page {
+                context.insert("title", &page.title);
+            } else {
+                context.insert("title", path.file_stem().unwrap().to_str().unwrap());
+            }
             context.insert("content", &html_output);
             context.insert("author", &config.metadata.author);
             context.insert("description", &config.metadata.description);
 
             // STUB. Remove hardcode of the post names
             // TODO: remove hardcode and grab actual page/post info from content folder
-            let pages = vec![
-                Page {
-                    title: String::from("About"),
-                    url: String::from("url"),
-                    description: String::from("description test"),
-                },
-                Page {
-                    title: String::from("Experience"),
-                    url: String::from("url"),
-                    description: String::from("description test"),
-                },
-                Page {
-                    title: String::from("Test"),
-                    url: String::from("url"),
-                    description: String::from("description test"),
-                },
+            let pages: Vec<Page> = vec![
+                // Page {
+                //     title: String::from("About"),
+                //     url: String::from("url"),
+                //     description: String::from("description test"),
+                // },
+                // Page {
+                //     title: String::from("Experience"),
+                //     url: String::from("url"),
+                //     description: String::from("description test"),
+                // },
+                // Page {
+                //     title: String::from("Test"),
+                //     url: String::from("url"),
+                //     description: String::from("description test"),
+                // },
             ];
 
-            let posts = vec![
-                Post {
-                    title: String::from("Test Post 1"),
-                    url: String::from("url"),
-                    description: String::from("Description 1"),
-                },
-                Post {
-                    title: String::from("Test Post 2"),
-                    url: String::from("url"),
-                    description: String::from("Description 2"),
-                },
+            let posts: Vec<Page> = vec![
+                // Post {
+                //     title: String::from("Test Post 1"),
+                //     url: String::from("url"),
+                //     description: String::from("Description 1"),
+                // },
+                // Post {
+                //     title: String::from("Test Post 2"),
+                //     url: String::from("url"),
+                //     description: String::from("Description 2"),
+                // },
             ];
 
             context.insert("pages", &pages);

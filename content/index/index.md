@@ -1,3 +1,7 @@
+---
+title: "Ryan Arnouk"
+---
+
 # Ryan Arnouk
 
 
@@ -25,15 +29,3 @@ More on my GitHub!
 
 ## Recent Blog Posts
 - ...stub...
-- Test rebuild
-
-![Example alt text](images/testimage.png)
-
-```
-function code() {
-test
-
-}
-```
-
-Developed by Ryan Arnouk using a custom-built static site generator written in Rust.

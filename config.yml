@@ -11,3 +11,4 @@ paths:
 build:
   minify_html: true
   generate_sitemap: false
+  cache: true
