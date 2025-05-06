@@ -1,4 +1,4 @@
-use cache::{compute_file_metadata, save_cache};
+use cache::CacheContext;
 use env_logger;
 use gray_matter::engine::YAML;
 use gray_matter::Matter;
@@ -7,8 +7,7 @@ use minify_html::{minify, Cfg};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tera::{Context, Tera};
 use walkdir::WalkDir;
@@ -28,6 +27,7 @@ struct Frontmatter {
     description: Option<String>,
 }
 
+// Retrieve configuration information from the configuration YAML file
 #[derive(Debug, Deserialize)]
 struct Config {
     metadata: SiteMetadata,
@@ -35,6 +35,7 @@ struct Config {
     build: Build,
 }
 
+// Metadata retrieved from the configuration YAML file
 #[derive(Debug, Deserialize)]
 struct SiteMetadata {
     base_url: String,
@@ -42,6 +43,8 @@ struct SiteMetadata {
     description: String,
 }
 
+// Paths for content, template, output build, and the static resourees. Specified as the path
+// relative to the configuration YAML file. NOT the Rust project directories
 #[derive(Debug, Deserialize)]
 struct Paths {
     content_dir: PathBuf,
@@ -50,6 +53,7 @@ struct Paths {
     static_dir: PathBuf,
 }
 
+// Build configuration specifications from configuration YAML.
 // TODO: Implement sitemap generation feature
 #[derive(Debug, Deserialize)]
 struct Build {
@@ -58,12 +62,15 @@ struct Build {
     cache: bool,
 }
 
-// metadata for a page/post
-#[derive(Debug, Serialize)]
+// A page is one of: Index (for the main page), a Page ("supporting" information page), a Post
+// (blog post)
+// Else: label as "Unknown" to warn the user that this has yet to be integrated
+#[derive(Debug, Serialize, Clone)]
 enum PageType {
     Index,
     Page, // regular information page
     Post,
+    Unknown,
 }
 
 // NOTE: Treat a page and a post the exact same (just that a post an optional will have a date/tag as well)
@@ -73,20 +80,59 @@ enum PageType {
 #[derive(Debug, Serialize)]
 struct Page {
     page_type: PageType,
+    name: String,
     title: Option<String>,
     url: Option<String>,
     description: Option<String>,
     tags: Option<Vec<String>>,
     date: Option<String>,
+    content: String,
 }
 
-// // metadata for a blog post
-// #[derive(Debug, Serialize)]
-// struct Post {
-//     title: String,
-//     url: String,
-//     description: String,
-// }
+#[derive(Debug)]
+struct Site {
+    configuration: Config,
+    index: Option<Page>,
+    pages: Vec<Page>,
+    posts: Vec<Page>,
+}
+
+impl Site {
+    fn new(config: Config) -> Self {
+        Site {
+            configuration: config,
+            index: None,
+            pages: Vec::new(),
+            posts: Vec::new(),
+        }
+    }
+
+    fn add_page(&mut self, page: Page, page_type: PageType) {
+        match page_type {
+            PageType::Index => {
+                self.index = Some(page);
+            }
+            PageType::Page => {
+                self.pages.push(page);
+            }
+            PageType::Post => {
+                self.posts.push(page);
+            }
+            PageType::Unknown => {
+                // do nothing
+            }
+        }
+    }
+
+    fn get_template_name(page: &Page) -> String {
+        match page.page_type {
+            PageType::Index => String::from("index"),
+            PageType::Page => String::from("page"),
+            PageType::Post => String::from("post"),
+            PageType::Unknown => String::from(""),
+        }
+    }
+}
 
 // Reading YAML configuration files
 fn load_yaml_config(file_path: &PathBuf) -> Result<Config, Box<dyn std::error::Error>> {
@@ -95,8 +141,9 @@ fn load_yaml_config(file_path: &PathBuf) -> Result<Config, Box<dyn std::error::E
     Ok(config)
 }
 
-/// Reconcile all paths in the configuration to absolute paths
-fn reconcile_paths(base_path: &Path, config: Paths) -> Paths {
+// Resolves all directory paths relative to the configuration YAML file to
+// to change to absbolute paths in the project
+fn reconcile_configuration_directory_paths(base_path: &Path, config: Paths) -> Paths {
     Paths {
         content_dir: base_path.join(config.content_dir),
         template_dir: base_path.join(config.template_dir),
@@ -105,38 +152,103 @@ fn reconcile_paths(base_path: &Path, config: Paths) -> Paths {
     }
 }
 
+// Grabs the configuration file relative to the location in the CONFIG_PATH environment variable
+fn retrieve_configuration() -> Config {
+    info!("Retrieving config file");
+
+    let config_path = path::resolve_environment_variable_path("CONFIG_PATH", "../config.yml");
+    let config_dir = config_path.parent().unwrap_or_else(|| Path::new("."));
+    debug!("{:?}", config_path);
+    let mut config = load_yaml_config(&config_path).unwrap();
+
+    config.paths = reconcile_configuration_directory_paths(config_dir, config.paths);
+    debug!("{:?}", config);
+
+    config
+}
+
+fn retrieve_cache(config: &Config) -> CacheContext {
+    info!("Retrieving cache JSON file");
+    // The cache will exist within the bin folder
+    let cache_path = config.paths.output_dir.join("cache.json");
+    CacheContext::load_or_default(cache_path).unwrap()
+}
+
 // Build styling with Tailwind
 // Assumes Tailwind exists globally on the system (npm install -g)
 //
 // NOTE: side effect of spawning a child process to execute tailwind
-fn build_tailwind(build_path: &PathBuf) -> std::io::Result<()> {
-    let output_path = build_path.join("tailwind.css");
+// Retrieve the folder name of a file (as matched to an HTML template)
+fn build_tailwind(site: &Site) -> std::io::Result<()> {
+    let output_path = site
+        .configuration
+        .paths
+        .output_dir
+        .join("static/styles/tailwind.css");
+    let working_dir = site.configuration.paths.template_dir.clone();
 
-    let status = Command::new("npx")
+    info!("Tailwind build starting");
+    info!("Output path: {:?}", output_path);
+    info!("Working directory: {:?}", working_dir);
+
+    // Check path existence
+    if !working_dir.exists() {
+        error!("Working directory does not exist: {:?}", working_dir);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Directory not found: {:?}", working_dir),
+        ));
+    }
+
+    if which::which("npx").is_err() {
+        error!("`npx` not found in PATH!");
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "npx not found in PATH",
+        ));
+    }
+
+    // Log command being run
+    info!(
+        "Running command: npx tailwindcss -i input.css -o {} --minify",
+        output_path.to_str().unwrap_or("<invalid path>")
+    );
+
+    let output = Command::new("npx")
         .args([
             "tailwindcss",
             "-i",
-            "input.css", // input css
+            "input.css",
             "-o",
-            output_path.to_str().unwrap(), // output css
-            "--minify",                    // minify the output
+            output_path.to_str().unwrap(),
+            "--minify",
         ])
-        .current_dir(build_path.join("../templates"))
-        .status()?;
+        .current_dir(&working_dir)
+        .output();
 
-    if status.success() {
-        info!("TailwindCSS build successful: {:?}", output_path);
-        Ok(())
-    } else {
-        error!("TailwindCSS build failed: {:?}", output_path);
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Failed to build TailwindCSS",
-        ))
+    match output {
+        Ok(output) => {
+            info!("Command completed with status: {}", output.status);
+            if !output.status.success() {
+                error!("Tailwind build failed");
+                error!("stdout:\n{}", String::from_utf8_lossy(&output.stdout));
+                error!("stderr:\n{}", String::from_utf8_lossy(&output.stderr));
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Tailwind build failed",
+                ));
+            }
+        }
+        Err(e) => {
+            error!("Failed to spawn command: {}", e);
+            return Err(e);
+        }
     }
+
+    info!("Tailwind build succeeded");
+    Ok(())
 }
 
-// Retrieve the folder name of a file (as matched to an HTML template)
 fn get_template_name(path_to_file: &Path) -> &OsStr {
     // Retrieve the parent folder name to the file path
     let folder_path = path_to_file.parent().unwrap();
@@ -147,50 +259,53 @@ fn get_template_name(path_to_file: &Path) -> &OsStr {
     folder_name
 }
 
-fn extract_page_info(frontmatter: Frontmatter) -> Page {
+fn extract_page_info(
+    path: &Path,
+    frontmatter: Frontmatter,
+    content: String,
+    page_type: PageType,
+) -> Page {
     let page = Page {
-        page_type: PageType::Page, // TODO: add post type based on directory name. temp stub
+        page_type,
+        name: path.file_stem().unwrap().to_str().unwrap().to_string(),
         title: frontmatter.title,
         url: Some(String::from("test url")),
         description: frontmatter.description,
         tags: frontmatter.tags,
         date: frontmatter.date,
+        content,
     };
 
     page
 }
 
 fn main() -> std::io::Result<()> {
+    // Initialize the logger (which uses an environment variable to correspondingly toggle)
     env_logger::init();
 
-    info!("Retrieving config file");
-    let config_path = path::resolve_base_path("CONFIG_PATH", "../config.yml");
-    let config_dir = config_path.parent().unwrap_or_else(|| Path::new("."));
-    debug!("{:?}", config_path);
-    let mut config = load_yaml_config(&config_path).unwrap();
+    let config = retrieve_configuration();
+    let mut cache_context = retrieve_cache(&config);
 
-    config.paths = reconcile_paths(config_dir, config.paths);
-    debug!("{:?}", config);
+    let mut site = Site::new(config);
+    info!(
+        "Start generation for site with base URL: {:?}",
+        site.configuration.metadata.base_url
+    );
+    info!(
+        "Build configuration: \n Minify HTML: {:?} \n Sitemap generation: {:?}",
+        site.configuration.build.minify_html, site.configuration.build.generate_sitemap
+    );
 
-    let template_dir = &config.paths.template_dir;
-    let content_dir = &config.paths.content_dir;
-    let output_dir = &config.paths.output_dir;
-    let static_dir = &config.paths.static_dir;
+    let template_dir = &site.configuration.paths.template_dir;
+    let content_dir = &site.configuration.paths.content_dir;
+    let output_dir = &site.configuration.paths.output_dir;
+    let static_dir = &site.configuration.paths.static_dir;
 
-    info!("Retrieving cache JSON file");
-    // The cache will exist within the bin folder
-    let cache_path = output_dir.join("cache.json");
-    let mut cache = cache::load_cache(&cache_path).unwrap_or_default();
-
-    let template_dir = &config.paths.template_dir;
-    let content_dir = &config.paths.content_dir;
-    let output_dir = &config.paths.output_dir;
-    let static_dir = &config.paths.static_dir;
-
-    // HANDLE STATIC CONTENT (from resources.rs folder)
+    // Handles static resources (images, etc)
     // copy the static directory into the build folder.
     // These files do not require any extra processing by the SSG
-    // But I added steps to optimize file sizes/image formats
+    // but the following function runs an optimization for image files
+    // Saves static files within a nested /static folder within the output directory
     resources::optimize_and_copy_static_folder(
         Path::new(static_dir),
         Path::new(output_dir).join("static").as_path(),
@@ -198,10 +313,15 @@ fn main() -> std::io::Result<()> {
     )?;
 
     // Initialize Tera for templating with the HTML files
-    let tera =
-        Tera::new(format!("{}/**/*.html", template_dir.to_string_lossy().to_string()).as_str());
+    let template_filepath = format!(
+        "{}/**/*.html",
+        template_dir
+            .to_str()
+            .expect("Template directory must be a UTF-8")
+    );
+    let tera = Tera::new(&template_filepath);
 
-    // Create output directory
+    // Create output directory for the build results
     fs::create_dir_all(output_dir)?;
 
     for entry in WalkDir::new(content_dir).into_iter().filter_map(Result::ok) {
@@ -210,20 +330,17 @@ fn main() -> std::io::Result<()> {
             let path_buf = path.to_path_buf();
 
             // Check if unmodified based on hash & modify metadata in cache
-            if config.build.cache {
-                if cache::has_file_changed(&path_buf, &cache)? {
-                    info!("Rebuilding: {:?}", path);
-                    // update the cache
-                    cache
-                        .file_data
-                        .insert(path_buf.clone(), compute_file_metadata(&path_buf)?);
-                } else {
-                    info!("Skipping unchanged file: {:?}", path_buf);
+            if site.configuration.build.cache {
+                if !cache_context.update_file_if_changed(&path_buf)? {
+                    // If the file was already in the cache, move onto the next file
+                    // without rebuilding the page
                     continue;
+                } else {
+                    info!("File {:?} was changed. Rebuilding", path_buf);
                 }
             } else {
                 info!(
-                    "File {:?} not cached. Cache on this build is disabled (check config.yml file)",
+                    "File {:?} was not cached. Cache on this build is disabled (check config.yml file)",
                     path_buf
                 );
             }
@@ -235,96 +352,69 @@ fn main() -> std::io::Result<()> {
             let matter = Matter::<YAML>::new();
             let parsed_frontmatter = matter.parse(&markdown);
 
+            let html_template_file = get_template_name(path);
+            let page_type = match html_template_file.to_str().unwrap() {
+                "index" => PageType::Index,
+                "page" => PageType::Page,
+                "post" => PageType::Post,
+                _ => PageType::Unknown,
+            };
             let page = if let Some(front) = parsed_frontmatter.data {
                 let frontmatter: Frontmatter = front.deserialize().unwrap();
-                Some(extract_page_info(frontmatter))
+                Some(extract_page_info(
+                    path,
+                    frontmatter,
+                    parsed_frontmatter.content,
+                    page_type.clone(),
+                ))
             } else {
                 None
             };
 
-            let content = parsed_frontmatter.content;
-
-            // Convert Markdown to HTML
-            let html_output =
-                parser::parse_markdown_with_tailwind(&content, &tera.as_ref().unwrap());
-
-            // Render with template
-            let mut context = Context::new();
             if let Some(page) = page {
+                // Build the HTML for the page
+                // Convert Markdown to HTML
+                let html_output =
+                    parser::parse_markdown_with_tailwind(&page.content, &tera.as_ref().unwrap());
+                let mut context = Context::new();
                 context.insert("title", &page.title);
-            } else {
-                context.insert("title", path.file_stem().unwrap().to_str().unwrap());
-            }
-            context.insert("content", &html_output);
-            context.insert("author", &config.metadata.author);
-            context.insert("description", &config.metadata.description);
+                context.insert("content", &html_output);
+                context.insert("author", &site.configuration.metadata.author);
+                context.insert("description", &site.configuration.metadata.description);
+                let pages: Vec<Page> = vec![];
+                let posts: Vec<Page> = vec![];
 
-            // STUB. Remove hardcode of the post names
-            // TODO: remove hardcode and grab actual page/post info from content folder
-            let pages: Vec<Page> = vec![
-                // Page {
-                //     title: String::from("About"),
-                //     url: String::from("url"),
-                //     description: String::from("description test"),
-                // },
-                // Page {
-                //     title: String::from("Experience"),
-                //     url: String::from("url"),
-                //     description: String::from("description test"),
-                // },
-                // Page {
-                //     title: String::from("Test"),
-                //     url: String::from("url"),
-                //     description: String::from("description test"),
-                // },
-            ];
+                context.insert("pages", &pages);
+                context.insert("posts", &posts);
 
-            let posts: Vec<Page> = vec![
-                // Post {
-                //     title: String::from("Test Post 1"),
-                //     url: String::from("url"),
-                //     description: String::from("Description 1"),
-                // },
-                // Post {
-                //     title: String::from("Test Post 2"),
-                //     url: String::from("url"),
-                //     description: String::from("Description 2"),
-                // },
-            ];
+                let output_filename = page.name.clone() + ".html";
+                let html_template_file = Site::get_template_name(&page);
+                let html_file_name = format!("{}.html", html_template_file);
+                let rendered = tera.as_ref().unwrap().render(&html_file_name, &context);
+                let output_path =
+                    Path::new(&site.configuration.paths.output_dir).join(output_filename);
 
-            context.insert("pages", &pages);
-            context.insert("posts", &posts);
+                // page metadata exists, add to the site data structure
+                Site::add_page(&mut site, page, page_type);
 
-            let html_template_file = get_template_name(path);
-            let html_file_name = format!("{}.html", html_template_file.to_string_lossy());
-            let rendered = tera.as_ref().unwrap().render(&html_file_name, &context);
-
-            // CSS styling output
-            let _ = build_tailwind(output_dir);
-
-            // Create the output file name
-            let output_path = Path::new(&config.paths.output_dir)
-                .join(path.file_stem().unwrap().to_str().unwrap().to_string() + ".html");
-
-            // If desired, run the minify utility before outputting the final build
-            // files. This is defined within the config YAML file
-            if config.build.minify_html {
-                let cfg = Cfg {
-                    minify_js: true,
-                    minify_css: false, // Tailwind already out
-                    ..Default::default()
-                };
-                let minified = minify(rendered.unwrap().as_bytes(), &cfg);
-                fs::write(output_path, minified)?;
-            } else {
-                // Write output file
-                fs::write(output_path, rendered.unwrap())?;
+                // TODO: WRITE FILE TO CACHE AND TO FILE SYSTEM NEXT
+                if site.configuration.build.minify_html {
+                    let minify_config = Cfg {
+                        minify_js: true,
+                        minify_css: false, // already done by Tailwind
+                        ..Default::default()
+                    };
+                    let minified = minify(rendered.unwrap().as_bytes(), &minify_config);
+                    fs::write(output_path, minified)?;
+                } else {
+                    // Write the non-minified resources
+                    fs::write(output_path, rendered.unwrap())?;
+                }
             }
         }
     }
 
-    let _ = save_cache(&cache, &cache_path);
-
+    let _ = build_tailwind(&site);
     info!("Static site generated in 'output/' directory!");
     Ok(())
 }

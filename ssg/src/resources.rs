@@ -2,9 +2,9 @@
 // in the static folder). This also handles image optimization
 // workflows
 
-use crate::cache::{self, compute_file_metadata};
+use crate::cache::CacheContext;
 use image::{DynamicImage, ImageFormat};
-use log::info;
+use log::{info, warn};
 use std::fs;
 use std::io::Result;
 use std::path::{Path, PathBuf};
@@ -31,7 +31,8 @@ pub fn optimize_and_copy_static_folder(
     static_output_path: &Path,
     cache_path: &PathBuf,
 ) -> Result<()> {
-    let mut cache = cache::load_cache(&cache_path).unwrap_or_default();
+    let cache_file = cache_path.clone();
+    let mut cache_context = CacheContext::load_or_default(cache_file).unwrap();
 
     if !static_path.exists() {
         return Err(std::io::Error::new(
@@ -49,30 +50,30 @@ pub fn optimize_and_copy_static_folder(
             let static_output_path = static_output_path.join(file_name);
 
             let file_name_path_buf = path.to_path_buf();
+
             // check if the file is unmodified (already in build)
-            if cache::has_file_changed(&file_name_path_buf, &cache)? {
-                info!("Copying/optimizing static file: {:?}", file_name_path_buf);
-            } else {
+            // if not, skip this file (continue), otherwise, update the cache
+            // and log reflecting that a new resource will save the optimized copy
+            if !cache_context.update_file_if_changed(&file_name_path_buf)? {
                 info!("Skipping already copied file: {:?}", file_name_path_buf);
                 continue;
+            } else {
+                info!("Copying/optimizing static file: {:?}", file_name_path_buf);
             }
 
-            // Proceed with optimization and copying
-            let image = image::io::Reader::open(&path)?.decode().unwrap();
-            save_optimized_image(&image, &static_output_path)?;
-
-            // Update the cache (after the optimization occurs)
-            cache.file_data.insert(
-                file_name_path_buf.clone(),
-                compute_file_metadata(&file_name_path_buf)?,
-            );
-
-            let _ = cache::save_cache(&cache, &cache_path);
+            match image::io::Reader::open(&path).unwrap().decode() {
+                Ok(image) => {
+                    save_optimized_image(&image, &static_output_path)?;
+                }
+                Err(_err) => {
+                    warn!("Could not decode the following file as an image (optimization failed): {:?}", path);
+                }
+            }
         } else if path.is_dir() {
             // Recursively process subdirectories
             let subfolder = static_output_path.join(path.file_name().unwrap());
             fs::create_dir_all(&subfolder)?;
-            optimize_and_copy_static_folder(&path, &subfolder, cache_path)?;
+            optimize_and_copy_static_folder(&path, &subfolder, &cache_path)?;
         }
     }
 
