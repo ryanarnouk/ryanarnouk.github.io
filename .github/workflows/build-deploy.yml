@@ -41,7 +41,7 @@ jobs:
 
       - name: Install Tailwind
         run: |
-          npm install -g tailwindcss
+          npm install -g tailwindcss@^3.0.0
 
       - name: Restore SSG build from cache
         id: cache
