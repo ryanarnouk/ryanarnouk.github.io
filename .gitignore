@@ -25,3 +25,5 @@ Cargo.lock
 *.db
 build
 .DS_Store
+
+DESIGN.md

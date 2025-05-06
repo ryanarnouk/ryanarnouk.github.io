@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Helper script to clear the cache of both the static resources "static-cache.json" and the regular content files "cache.json"
+
 CACHE="./build/cache.json"
 STATIC_CACHE="./build/static-cache.json"
 
