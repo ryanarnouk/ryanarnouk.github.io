@@ -419,5 +419,6 @@ fn main() -> std::io::Result<()> {
 
     let _ = build_tailwind(&site);
     info!("Static site generated in 'output/' directory!");
+    debug!("Site generated: {:?}", site);
     Ok(())
 }
