@@ -3,7 +3,7 @@
 // workflows
 
 use crate::cache::CacheContext;
-use image::{DynamicImage, ImageFormat};
+use image::{guess_format, DynamicImage, ImageFormat};
 use log::{info, warn};
 use std::fs;
 use std::io::Result;
@@ -61,9 +61,20 @@ pub fn optimize_and_copy_static_folder(
                 info!("Copying/optimizing static file: {:?}", file_name_path_buf);
             }
 
-            match image::io::Reader::open(&path).unwrap().decode() {
+            let reader = image::io::Reader::open(&path)?;
+            let format = reader.format().unwrap_or(ImageFormat::Png); // fallback if format is not detected
+            match reader.decode() {
                 Ok(image) => {
-                    save_optimized_image(&image, &static_output_path)?;
+                    if format == ImageFormat::Ico {
+                        // generate a new file name with a WebP extension
+                        let output_path = static_output_path.with_extension("ico");
+
+                        // write the resized image as WebP
+                        let mut output_file = std::fs::File::create(output_path)?;
+                        image.write_to(&mut output_file, ImageFormat::Ico).unwrap();
+                    } else {
+                        save_optimized_image(&image, &static_output_path)?;
+                    }
                 }
                 Err(_err) => {
                     warn!("Could not decode the following file as an image (optimization failed): {:?}", path);
