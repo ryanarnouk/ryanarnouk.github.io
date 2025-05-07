@@ -132,6 +132,40 @@ impl Site {
             PageType::Unknown => String::from(""),
         }
     }
+
+    fn generate_page(&self, page: &Page, tera: &Tera) -> Result<(), Box<dyn std::error::Error>> {
+        let html_output = parser::parse_markdown_with_tailwind(&page.content, tera);
+
+        let mut context = Context::new();
+        context.insert("title", &page.title);
+        context.insert("date", &page.date);
+        context.insert("content", &html_output);
+        context.insert("author", &self.configuration.metadata.author);
+        context.insert("description", &self.configuration.metadata.description);
+        context.insert("pages", &self.pages);
+        context.insert("posts", &self.posts);
+
+        let output_filename = format!("{}.html", page.name);
+        let html_template_file = Site::get_template_name(page);
+        let rendered = tera.render(&format!("{}.html", html_template_file), &context)?;
+
+        let output_path = Path::new(&self.configuration.paths.output_dir).join(output_filename);
+        if self.configuration.build.minify_html {
+            let minified = minify(
+                rendered.as_bytes(),
+                &Cfg {
+                    minify_js: true,
+                    minify_css: false,
+                    ..Default::default()
+                },
+            );
+            fs::write(output_path, minified)?;
+        } else {
+            fs::write(output_path, rendered)?;
+        }
+
+        Ok(())
+    }
 }
 
 // Reading YAML configuration files
@@ -304,6 +338,15 @@ fn main() -> std::io::Result<()> {
     let output_dir = &site.configuration.paths.output_dir;
     let static_dir = &site.configuration.paths.static_dir;
 
+    let template_filepath = format!(
+        "{}/**/*.html",
+        template_dir
+            .to_str()
+            .expect("Template directory must be a UTF-8")
+    );
+    let tera_result = Tera::new(&template_filepath);
+    let tera = tera_result.unwrap();
+
     // Handles static resources (images, etc)
     // copy the static directory into the build folder.
     // These files do not require any extra processing by the SSG
@@ -315,18 +358,11 @@ fn main() -> std::io::Result<()> {
         &output_dir.join("static-cache.json"),
     )?;
 
-    // Initialize Tera for templating with the HTML files
-    let template_filepath = format!(
-        "{}/**/*.html",
-        template_dir
-            .to_str()
-            .expect("Template directory must be a UTF-8")
-    );
-    let tera = Tera::new(&template_filepath);
-
     // Create output directory for the build results
     fs::create_dir_all(output_dir)?;
 
+    // Pass 1: Create the Site struct representing the website based on recursively walking through
+    // the directories
     for entry in WalkDir::new(content_dir).into_iter().filter_map(Result::ok) {
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("md") {
@@ -376,47 +412,37 @@ fn main() -> std::io::Result<()> {
             };
 
             if let Some(page) = page {
-                // Build the HTML for the page
-                // Convert Markdown to HTML
-                let html_output =
-                    parser::parse_markdown_with_tailwind(&page.content, &tera.as_ref().unwrap());
-                let mut context = Context::new();
-                context.insert("title", &page.title);
-                context.insert("date", &page.date);
-                context.insert("content", &html_output);
-                context.insert("author", &site.configuration.metadata.author);
-                context.insert("description", &site.configuration.metadata.description);
-
-                context.insert("pages", &site.pages);
-                context.insert("posts", &site.posts);
-
-                let output_filename = page.name.clone() + ".html";
-                let html_template_file = Site::get_template_name(&page);
-                let html_file_name = format!("{}.html", html_template_file);
-                let rendered = tera.as_ref().unwrap().render(&html_file_name, &context);
-                let output_path =
-                    Path::new(&site.configuration.paths.output_dir).join(output_filename);
-
                 // page metadata exists, add to the site data structure
                 Site::add_page(&mut site, page, page_type);
-
-                // TODO: WRITE FILE TO CACHE AND TO FILE SYSTEM NEXT
-                if site.configuration.build.minify_html {
-                    let minify_config = Cfg {
-                        minify_js: true,
-                        minify_css: false, // already done by Tailwind
-                        ..Default::default()
-                    };
-                    let minified = minify(rendered.unwrap().as_bytes(), &minify_config);
-                    fs::write(output_path, minified)?;
-                } else {
-                    // Write the non-minified resources
-                    fs::write(output_path, rendered.unwrap())?;
-                }
             }
         }
     }
 
+    // Pass 2: Generate the HTML for each page in the site
+    // 1. Generate the index page
+    // 2. Generate the other pages
+    // 3. Generate the blog posts
+    // Initialize Tera for templating with the HTML files
+
+    if let Some(index) = site.index.as_ref() {
+        if let Err(e) = site.generate_page(index, &tera) {
+            error!("Failed to generate index page '{}': {}", index.name, e);
+        }
+    } else {
+        error!("No index page found in site data");
+    }
+
+    for page in &site.pages {
+        if let Err(e) = site.generate_page(page, &tera) {
+            error!("Failed to generate page '{}': {}", page.name, e);
+        }
+    }
+
+    for post in &site.posts {
+        if let Err(e) = site.generate_page(post, &tera) {
+            error!("Failed to generate post '{}': {}", post.name, e);
+        }
+    }
     let _ = build_tailwind(&site);
     info!("Static site generated in 'output/' directory!");
     debug!("Site generated: {:?}", site);
