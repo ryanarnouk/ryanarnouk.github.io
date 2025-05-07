@@ -12,19 +12,13 @@
         <main
             class="container mx-auto p-4 flex min-h-screen max-w-3xl flex-col bg-bgColor px-4 pt-16 font-mono text-sm font-normal text-textColor antialiased sm:px-8"
         >
+            {%include "partials/header.html"%}
             {{ content | safe }}
-            <header>
-                <nav class="absolute -inset-x-4 top-14 hidden flex-col items-end gap-y-4 rounded-md bg-bgColor/[.85] py-4 text-accent shadow backdrop-blur group-[.menu-open]:z-50 group-[.menu-open]:flex sm:static sm:z-auto sm:-ms-4 sm:mt-1 sm:flex sm:flex-row sm:items-center sm:divide-x sm:divide-accent sm:rounded-none sm:bg-transparent sm:py-0 sm:shadow-none sm:backdrop-blur-none list-none">
-                    {% for page in pages %}
-                        <li><a href="{{ page.url }}">{{ page.title }}</a></li>
-                    {% endfor %}
-                </nav>
-            </header>
-            <h2>Recent Posts</h2>
+            <h2 class="text-2xl font-semibold text-black-500 mb-4">Recent Posts</h2>
             <ul>
                 {% for post in posts %}
                     <li>
-                        <a href="{{ post.url }}">{{ post.title }}</a>
+                        <a class="text-base font-bold leading-relaxed text-green-700" href="{{ post.url }}">{{ post.title }} - {{ post.date }}</a>
                     </li>
                 {% endfor %}
             </ul>

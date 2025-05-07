@@ -260,16 +260,19 @@ fn get_template_name(path_to_file: &Path) -> &OsStr {
 }
 
 fn extract_page_info(
+    base_url: String,
     path: &Path,
     frontmatter: Frontmatter,
     content: String,
     page_type: PageType,
 ) -> Page {
+    let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+
     let page = Page {
         page_type,
-        name: path.file_stem().unwrap().to_str().unwrap().to_string(),
+        name: name.clone(),
         title: frontmatter.title,
-        url: Some(String::from("test url")),
+        url: Some(base_url + "/" + name.as_str() + ".html"),
         description: frontmatter.description,
         tags: frontmatter.tags,
         date: frontmatter.date,
@@ -362,6 +365,7 @@ fn main() -> std::io::Result<()> {
             let page = if let Some(front) = parsed_frontmatter.data {
                 let frontmatter: Frontmatter = front.deserialize().unwrap();
                 Some(extract_page_info(
+                    site.configuration.metadata.base_url.clone(),
                     path,
                     frontmatter,
                     parsed_frontmatter.content,
@@ -378,14 +382,13 @@ fn main() -> std::io::Result<()> {
                     parser::parse_markdown_with_tailwind(&page.content, &tera.as_ref().unwrap());
                 let mut context = Context::new();
                 context.insert("title", &page.title);
+                context.insert("date", &page.date);
                 context.insert("content", &html_output);
                 context.insert("author", &site.configuration.metadata.author);
                 context.insert("description", &site.configuration.metadata.description);
-                let pages: Vec<Page> = vec![];
-                let posts: Vec<Page> = vec![];
 
-                context.insert("pages", &pages);
-                context.insert("posts", &posts);
+                context.insert("pages", &site.pages);
+                context.insert("posts", &site.posts);
 
                 let output_filename = page.name.clone() + ".html";
                 let html_template_file = Site::get_template_name(&page);

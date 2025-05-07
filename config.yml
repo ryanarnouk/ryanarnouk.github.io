@@ -1,5 +1,5 @@
 metadata:
-  base_url: "https://ryanarnouk.github.io"
+  base_url: "https://ryanarnouk.github.io/site"
   title: "Ryan Arnouk"
   author: "Ryan Arnouk"
   description: "Ryan Arnouk's personal website"
@@ -11,4 +11,4 @@ paths:
 build:
   minify_html: true
   generate_sitemap: false
-  cache: true
+  cache: false

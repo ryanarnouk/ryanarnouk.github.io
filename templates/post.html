@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <!-- Basic Metadata -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title | safe }}</title>
+    <meta name="description" content="{{ description | safe }}" />
+    <meta name="author" content="{{ author }}" />
+    <link rel="stylesheet" href="static/styles/tailwind.css" />
+  </head>
+
+  <body>
+    <main class="container mx-auto flex min-h-screen max-w-3xl flex-col bg-bgColor px-4 pt-16 font-mono text-sm font-normal text-textColor antialiased sm:px-8">
+      {%include "partials/header.html"%}
+
+      <!-- Page Content -->
+      <h1 class="mt-2 text-2xl font-semibold text-black-500 mb-4">{{ title | safe}}</h1>
+      <p class="font-semibold text-black-500 mb-4">{{ date | safe}}</p>
+      {{ content | safe }}
+
+      {% include "partials/footer.html" %}
+    </main>
+  </body>
+</html>

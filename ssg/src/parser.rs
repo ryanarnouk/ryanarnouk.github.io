@@ -107,14 +107,14 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                     dest_url.to_string(), title.to_string(),
                 ));
             }
-            
+
             Event::End(TagEnd::Link) => {
                 html_output.push_str("</a>");
             }
 
             // Customize paragraphs
             Event::Start(Tag::Paragraph) => {
-                html_output.push_str("<p class=\"text-base font-normal leading-relaxed\">");
+                html_output.push_str("<p class=\"text-base font-normal leading-relaxed mb-3\">");
             }
             Event::End(TagEnd::Paragraph) => {
                 html_output.push_str("</p>");

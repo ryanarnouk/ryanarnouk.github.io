@@ -1,10 +1,8 @@
 ---
-title: "Test"
-date: "12-12-2024"
-tags: ["Test"]
+title: "Remaking My Personal Website"
+date: "05-06-2025"
+tags: ["Rust", "Web Development"]
 ---
-
-# Personal Website
 
 My own personal website, bundled with a static site generator written in Rust.
 
