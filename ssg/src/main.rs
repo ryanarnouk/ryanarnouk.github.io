@@ -144,7 +144,8 @@ impl Site {
         context.insert("description", &self.configuration.metadata.description);
         context.insert("pages", &self.pages);
         context.insert("posts", &self.posts);
-
+        context.insert("tags", &page.tags);
+        
         let output_filename = format!("{}.html", page.name);
         let html_template_file = Site::get_template_name(page);
         let rendered = tera.render(&format!("{}.html", html_template_file), &context)?;

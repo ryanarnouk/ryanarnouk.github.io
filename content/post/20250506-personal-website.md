@@ -63,7 +63,7 @@ The nice thing about this sort of structure is that while both easier to parse t
 (h1 (+ 2 2))
 ``` 
 
-Where a header 1 of `(+ 2 2)` is evaluated and rendered the HTML file servered to the client. 
+Where a header 1 of `(+ 2 2)` would be evaluated and rendered as "4" in the HTML file servered to the client. 
 
 While a nice idea on paper, and one that I certainly wnat to explore further, I had already written a substantial portion of the SSG in Rust using Pulldown-cmark as the Markdown (or CommonMark) parser and so I decided to stick with what I currently had, leaving it as one of the few libraries allowed to use.
 
