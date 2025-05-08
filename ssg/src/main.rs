@@ -363,7 +363,11 @@ fn main() -> std::io::Result<()> {
 
     // Pass 1: Create the Site struct representing the website based on recursively walking through
     // the directories
-    for entry in WalkDir::new(content_dir).into_iter().filter_map(Result::ok) {
+    // Note: files are added to the Site struct in descending order by filename (from the folder in which they are found)
+    let mut files: Vec<walkdir::DirEntry> = WalkDir::new(content_dir).into_iter().filter_map(Result::ok).collect();
+    files.sort_by(|a, b| b.file_name().cmp(a.file_name()));
+
+    for entry in files {
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("md") {
             let path_buf = path.to_path_buf();

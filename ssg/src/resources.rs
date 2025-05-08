@@ -3,7 +3,7 @@
 // workflows
 
 use crate::cache::CacheContext;
-use image::{guess_format, DynamicImage, ImageFormat};
+use image::{DynamicImage, ImageFormat};
 use log::{info, warn};
 use std::fs;
 use std::io::Result;
