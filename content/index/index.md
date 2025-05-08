@@ -4,9 +4,7 @@ title: "Ryan Arnouk"
 
 Hi, I'm Ryan, an undergraduate Computer Science student at the University of British Columbia wrapping up my degree next year.
 
-
 I like to write computer programs. My main interests lie in software engineering, where I have experience in backend development, cloud infrastructure, and full-stack engineering. Recently, I've been diving deeper into operating systems, compilers, programming languages, and runtimes. On this site, I write about these topics.
-
 
 Outside of my own software engineering journey, I am interested in pedagogy and teaching.
 
