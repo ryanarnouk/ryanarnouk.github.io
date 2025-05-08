@@ -35,7 +35,7 @@ A more comprehensive list of my side projects can be found on my GitHub. I've in
 - [Breathe App](https://github.com/ryanarnouk/nwhacks-2024) - an air quality monitor providing insights into a space 
 - [Discover Machine Learning](https://github.com/ryanarnouk/Discover-Machine-Learning) - an interactive introduction into the world of basic machine learning concepts
 with a visual block editor, targetted towards elementary-aged students
-- [This Website](https://github.com/ryanarnouk/site) - my third (or fourth, I forgot the count at this point) rewrite of my personal site. This time, I wrote a custom static site generator in Rust (got tired of keeping NPM dependencies up to date) 
+- [This Website](https://github.com/ryanarnouk/ryanarnouk.github.io) - my third (or fourth, I forgot the count at this point) rewrite of my personal site. This time, I wrote a custom static site generator in Rust (got tired of keeping NPM dependencies up to date) 
 - [AnkiGPT](https://github.com/ryanarnouk/anki-gpt-desktop) - an integration between Anki (the flashcard program) and OpenAI's ChatGPT API. I wrote the first version as a website (using TypeScript and Python) and later rewrote it as a desktop application using Rust, TypeScript, and Tauri. 
 
 More on my [GitHub](https://github.com/ryanarnouk)!
