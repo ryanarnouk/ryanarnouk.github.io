@@ -378,6 +378,11 @@ fn main() -> std::io::Result<()> {
                 if !cache_context.update_file_if_changed(&path_buf)? {
                     // If the file was already in the cache, move onto the next file
                     // without rebuilding the page
+                    // TODO: Need to add the page to the site when it is being retrieved 
+                    // from the cache so that other templates that pull in "page" and "post"
+                    // URLs/Titles still pulls in the entire site, and not just those that were
+                    // also rebuilt and not previously cached.
+                    // Site::add_page(&mut site, page, page_type);
                     continue;
                 } else {
                     info!("File {:?} was changed. Rebuilding", path_buf);
