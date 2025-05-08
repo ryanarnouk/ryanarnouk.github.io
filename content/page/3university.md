@@ -17,11 +17,11 @@ I've included a brief description for my more applicable and recent courses.
  
 **CPSC 411: Introduction to Compiler Construction**
 
-Collaborated on developing a compiler in Racket for a language that is a subset of Racket (roughly similar to a C-like abstraction level), targetting x86-assembly. 
+Collaborated on developing a compiler in Racket for a language that is a subset of Racket (roughly similar to a C-like abstraction level), targeting x86-assembly. 
 
 **CPSC 410: Advanced Software Engineering**
 
-Learned about designing and implementing a domain specific langauge and various types of program analysis. Completed a project called FileScript (a domain specific langauge) and DSA (a tool for visualizing lock dependencies statically to warn programmers about potential deadlocks)
+Learned about designing and implementing a domain specific language and various types of program analysis. Completed a project called FileScript (a domain specific language) and DSA (a tool for visualizing lock dependencies statically to warn programmers about potential deadlocks)
 
 **CPSC 416: Distributed Systems**
 

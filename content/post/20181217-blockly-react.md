@@ -6,7 +6,7 @@ tags: ["React"]
 
 Note: this is an old tutorial that was imported from my old site
 
-Google Blockly is an amazing Javascript library built by Google to offer an intearactive build block enviorenment with visual programming editors. It is a great way to make an educational app and naturally, you would probably want to use it with React.js so we will cover that in this tutorial.
+Google Blockly is an amazing Javascript library built by Google to offer an interactive build block environment with visual programming editors. It is a great way to make an educational app and naturally, you would probably want to use it with React.js so we will cover that in this tutorial.
 
 To use Blockly with React we would want to get <a href="https://www.npmjs.com/package/node-blockly" target="_blank">`node-blockly`</a>. Node Blockly would allow us to use our blockly code in JavaScript to use it with React.
 

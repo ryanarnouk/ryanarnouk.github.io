@@ -8,7 +8,7 @@ I like to write computer programs. My main interests lie in software engineering
 
 Outside of my own software engineering journey, I am interested in pedagogy and teaching.
 
-Please see [experience](/2experience) for a more in-depth description of my professional experience and [university](/3university) for details about my undergad.
+Please see [experience](/2experience) for a more in-depth description of my professional experience and [university](/3university) for details about my undergrad.
 
 ## Projects
 A more comprehensive list of my side projects can be found on my GitHub. I've included a link and brief descriptions of my more recent ones completed in the last ~5 years here. 
