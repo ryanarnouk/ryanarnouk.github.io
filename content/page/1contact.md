@@ -8,4 +8,4 @@ Feel free to contact me through the following:
 
 - [LinkedIn](https://www.linkedin.com/in/ryanarnouk/)
 - [GitHub](https://github.com/ryanarnouk)
-- [Email](malto:me@ryanarnouk.com)
+- [Email](mailto:me@ryanarnouk.com)
