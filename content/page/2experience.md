@@ -3,7 +3,7 @@ title: "Experience"
 ---
 ## Experience
 
-- Software Engineer Intern (incoming return) @ PayPal - San Jose, CA
+- Software Engineer Intern @ PayPal - San Jose, CA
 - Software Engineer Intern @ PayPal - Vancouver, BC
 - Software Developer Co-Op @ Copperleaf - Vancouver, BC
 - Software Engineer Intern @ SkyHive - Vancouver, BC
