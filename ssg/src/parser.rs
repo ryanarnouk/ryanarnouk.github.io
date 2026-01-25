@@ -11,15 +11,16 @@ fn replace_file_extension(file_path: &str, new_extension: &str) -> String {
     }
 }
 
-// TODO: Fix bugs around the parsing function (ALT tag on img specifically)
-// and clean up code
 pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> String {
     let parser = Parser::new_ext(md_content, Options::all());
     let mut html_output = String::new();
 
     let mut is_inside_header = false;
     let mut is_inside_image = false;
+    let mut is_first_element = true;
     let mut image_alt_text = String::new();
+    let mut current_image_src = String::new();
+    let mut current_image_title = String::new();
 
     for event in parser {
         match event {
@@ -34,13 +35,31 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                     panic!("Nested headers are not allowed");
                 }
                 is_inside_header = true;
-                let class = match level {
-                    HeadingLevel::H1 => "text-3xl font-bold text-black-600 mb-6",
-                    HeadingLevel::H2 => "text-2xl font-semibold text-black-500 mb-4",
-                    HeadingLevel::H3 => "text-xl font-medium text-black-400 mb-2",
-                    _ => "text-xl font-medium text-black-300",
+
+                // If this is the first thing on the page (under the nav), mt should be 0.
+                let mt = if is_first_element {
+                    "mt-0"
+                } else {
+                    match level {
+                        HeadingLevel::H2 => "mt-12",
+                        HeadingLevel::H3 => "mt-8",
+                        _ => "mt-6",
+                    }
                 };
+
+                let class = match level {
+                    HeadingLevel::H1 => {
+                        format!("text-4xl font-extrabold text-black-600 {} mb-8", mt)
+                    }
+                    HeadingLevel::H2 => format!("text-3xl font-bold text-black-500 {} mb-4", mt),
+                    HeadingLevel::H3 => {
+                        format!("text-2xl font-semibold text-black-400 {} mb-3", mt)
+                    }
+                    _ => format!("text-xl font-medium text-black-300 {} mb-2", mt),
+                };
+
                 write!(html_output, "<h{} class=\"{}\">", level as u8, class).unwrap();
+                is_first_element = false; // Something has been rendered
             }
             Event::End(TagEnd::Heading(level)) => {
                 if is_inside_header {
@@ -50,8 +69,7 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
             }
             Event::Text(text) => {
                 if is_inside_image {
-                    image_alt_text = text.to_string();
-                    is_inside_image = false;
+                    image_alt_text.push_str(&text);
                 } else {
                     html_output.push_str(&text);
                 }
@@ -66,7 +84,11 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
             }) => {
                 is_inside_image = true;
                 image_alt_text.clear();
-                // TODO: FIX ALT TEXT ISSUES NOT APPEARING IN IMG TAG
+                current_image_src = dest_url.to_string();
+                current_image_title = title.to_string();
+            }
+
+            Event::End(TagEnd::Image) => {
                 let image_data = tera::Context::from_serialize(&{
                     let mut context = std::collections::HashMap::new();
                     // Match destination to the static folder within the build directory
@@ -77,9 +99,20 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                     // turns into during the optimization/copy stages of the static folder
                     context.insert(
                         "src",
-                        format!("./static/{}", replace_file_extension(&dest_url, &"webp")),
+                        format!(
+                            "./static/{}",
+                            replace_file_extension(&current_image_src, "webp")
+                        ),
                     );
-                    context.insert("alt", title.to_string());
+                    // Use captured text from Event::Text for Alt tag
+                    context.insert(
+                        "alt",
+                        if image_alt_text.is_empty() {
+                            current_image_title.clone()
+                        } else {
+                            image_alt_text.clone()
+                        },
+                    );
                     context
                 })
                 .unwrap();
@@ -88,12 +121,9 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                 html_output.push_str(
                     &tera
                         .render("partials/image.html", &image_data)
-                        .unwrap_or_else(|_| "<!-- Failed to render image -->".to_string()),
+                        .unwrap_or_else(|_| "".to_string()),
                 );
-            }
-
-            Event::End(TagEnd::Image) => {
-                // No additional actions
+                is_inside_image = false;
             }
 
             Event::Start(Tag::Link {
@@ -114,7 +144,7 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
 
             // Customize paragraphs
             Event::Start(Tag::Paragraph) => {
-                html_output.push_str("<p class=\"text-base font-normal leading-relaxed mb-3\">");
+                html_output.push_str("<p class=\"text-base font-normal leading-relaxed mb-6\">");
             }
             Event::End(TagEnd::Paragraph) => {
                 html_output.push_str("</p>");
@@ -122,8 +152,9 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
 
             // Customize lists
             Event::Start(Tag::List(None)) => {
-                html_output
-                    .push_str("<ul class=\"list-disc text-base font-normal list-inside ml-4\">");
+                html_output.push_str(
+                    "<ul class=\"list-disc text-base font-normal list-inside ml-4 mb-6\">",
+                );
             }
             Event::End(TagEnd::List(_)) => {
                 html_output.push_str("</ul>");
@@ -136,7 +167,7 @@ pub fn parse_markdown_with_tailwind(md_content: &str, tera: &tera::Tera) -> Stri
                     pulldown_cmark::CodeBlockKind::Indented => "language-none".to_string(),
                 };
                 html_output.push_str(&format!(
-                    "<pre class=\"bg-gray-900 text-base font-normal text-white p-4 rounded-lg overflow-x-auto\"><code class=\"{}\">",
+                    "<pre class=\"bg-gray-900 text-base font-normal text-white p-4 rounded-lg overflow-x-auto mb-6\"><code class=\"{}\">",
                     language_class
                 ));
             }
