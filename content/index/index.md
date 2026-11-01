@@ -9,8 +9,9 @@ I like to write computer programs. My main interests lie in software engineering
 Please see [experience](/experience.html) for a more in-depth description of my professional experience and [university](/university.html) for details about my undergrad.
 
 ## Projects
-A more comprehensive list of my side projects can be found on my GitHub. I've included a link and brief descriptions of my more recent ones completed in the last ~5 years here. 
+A more comprehensive list of my side projects can be found on my GitHub. I've included a link and brief descriptions of my more recent ones completed in the last ~5 years here.
 
+- [Gotsan](https://github.com/ryanarnouk/gotsan) - a Go static analysis tool that verifies user-specified mutex preconditions, postconditions, invariants, and side effects to catch data races and deadlocks in shared-memory concurrent programs
 - [FileScript](https://github.com/ryanarnouk/FileScript) - a DSL implemented in Java for searching for files based on metadata and other properties
 - [DSA](https://github.com/ryanarnouk/DSA) - a static analysis tool that visualizes lock dependencies and warns programmers about potential runtime deadlocks
 - [Runtime VM](https://github.com/ryanarnouk/runtime-vm) - an in-progress virtual machine inspired by the JVM and .NET Runtime, implementing my own programming language
