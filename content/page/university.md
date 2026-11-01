@@ -1,4 +1,6 @@
 ---
+order: 1
+aliases: [3university]
 title: "University"
 ---
 ## UBC

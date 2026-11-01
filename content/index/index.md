@@ -6,7 +6,7 @@ Hi, I'm Ryan, an undergraduate Computer Science student at the University of Bri
 
 I like to write computer programs. My main interests lie in software engineering, where I have experience in backend development, cloud infrastructure, and full-stack engineering. Recently, I've been diving deeper into operating systems, compilers, programming languages, and runtimes. On this site, I write about these topics. Outside of software, I am also interested in pedagogy.
 
-Please see [experience](/2experience) for a more in-depth description of my professional experience and [university](/3university) for details about my undergrad.
+Please see [experience](/experience.html) for a more in-depth description of my professional experience and [university](/university.html) for details about my undergrad.
 
 ## Projects
 A more comprehensive list of my side projects can be found on my GitHub. I've included a link and brief descriptions of my more recent ones completed in the last ~5 years here. 

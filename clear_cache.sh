@@ -1,22 +1,15 @@
 #!/bin/bash
 
-# Helper script to clear the cache of both the static resources "static-cache.json" and the regular content files "cache.json"
+# Helper script to clear the SSG build cache (forces a full rebuild on the next run).
+# Equivalent to running the SSG with --force once. Use --clean to also wipe the build folder.
 
-CACHE="./build/cache.json"
-STATIC_CACHE="./build/static-cache.json"
+cd "$(dirname "$0")" || exit 1
 
-if [ -f "$CACHE_JSON" ]; then
-    rm "$CACHE_JSON"
-    echo "Cleared $CACHE_JSON"
-else
-    echo "$CACHE_JSON not found."
-fi
-
-if [ -f "$STATIC_CACHE" ]; then
-    rm "$STATIC_CACHE"
-    echo "Cleared $STATIC_CACHE"
-else
-    echo "$STATIC_CACHE not found."
-fi
+for CACHE in "./.ssg-cache.json" "./build/cache.json" "./build/static-cache.json"; do
+    if [ -f "$CACHE" ]; then
+        rm "$CACHE"
+        echo "Cleared $CACHE"
+    fi
+done
 
 echo "Successfully cleared build cache"

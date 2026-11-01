@@ -1,4 +1,6 @@
 ---
+order: 2
+aliases: [2experience]
 title: "Experience"
 ---
 ## Experience

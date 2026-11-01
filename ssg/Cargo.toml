@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 blake3 = "1.5.5"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 env_logger = "0.11.6"
 gray_matter = "0.2.8"
 image = "0.24"
@@ -18,4 +19,3 @@ serde_json = "1.0.134"
 serde_yaml = "0.9.34"
 tera = "1.20"
 walkdir = "2.4"
-which = "7.0.1"

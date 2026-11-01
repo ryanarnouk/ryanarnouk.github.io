@@ -1,4 +1,6 @@
 ---
+order: 3
+aliases: [1contact]
 title: "Contact"
 ---
 

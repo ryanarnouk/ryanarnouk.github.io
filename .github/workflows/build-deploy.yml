@@ -7,6 +7,10 @@ on:
 
   workflow_dispatch:
 
+  # Rebuild on January 1st so the footer year updates without a manual push
+  schedule:
+    - cron: "0 5 1 1 *"
+
 permissions:
   contents: read
   pages: write
@@ -37,55 +41,37 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 23
+          node-version: 24
 
       - name: Install Tailwind
         run: |
           npm install -g tailwindcss@^3.0.0
 
-      - name: Restore SSG build from cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: ./build
-          key: build-cache-${{ runner.os }}-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
-          restore-keys: |
-            build-cache-${{ runner.os }}-
-
+      # Only the compiled SSG is cached. The site itself is always generated from scratch
+      # (--clean) so a deploy can never contain stale pages from a previous build.
       - name: Restore Rust build from cache
         uses: actions/cache@v4
         with:
           path: |
-            ~/ssg/.cargo/bin/
-            ~/ssg/.cargo/registry/index/
-            ~/ssg/.cargo/registry/cache/
-            ~/ssg/.cargo/git/db/
-            ~/ssg/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ./ssg/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/Cargo.lock', './ssg/Cargo.toml', './ssg/src/**', './ssg/tests/**') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      # A failing test stops the deploy
+      - name: Test
+        working-directory: ./ssg
+        run: cargo test --release --locked
 
       - name: Build
         working-directory: ./ssg
-        run: cargo build --release
+        run: cargo build --release --locked
 
       - name: Run the binary
-        run: ./ssg/target/release/ssg
-
-      - name: Save updated build folder to cache
-        if: always() # Always save, even if the cache was restored
-        uses: actions/cache@v4
-        with:
-          path: ./build
-          key: build-cache-${{ runner.os }}-${{ hashFiles('./ssg/src/**', './content/**') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: ./ssg/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./ssg/src/**', './ssg/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+        run: ./ssg/target/release/ssg --clean
 
       - name: Setup GitHub pages
         uses: actions/configure-pages@v5
